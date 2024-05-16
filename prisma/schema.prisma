@@ -1,0 +1,159 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  CANTEEN
+}
+
+enum Payment {
+  COD
+  E_WALLET
+  BANK
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+}
+
+enum OrderStatus {
+  hold
+  pending
+  accepted
+  processed
+  done
+}
+
+enum UserStatus {
+  LOGGED_IN
+  LOGGED_OUT
+}
+
+// schema.prisma
+// User table
+model User {
+  user_id       Int             @id @default(autoincrement())
+  name          String
+  fullname      String
+  email         String          @unique
+  status        UserStatus
+  password      String
+  fcm_token     String?         @unique
+  role          Role            @default(USER)
+  carts         Cart[]
+  orders        Order[]
+  notifications Notifications[]
+  Canteen       Canteen[]
+}
+
+// Canteen table
+model Canteen {
+  canteen_id          Int      @id @default(autoincrement())
+  user                User     @relation(fields: [user_id], references: [user_id])
+  user_id             Int
+  canteen_number      Int
+  image_url           String
+  payment_method      String
+  bank_account_number String
+  last_seen           DateTime
+  orders              Order[]
+  Menu                Menu[]
+}
+
+// Order table
+model Order {
+  order_id                Int           @id @default(autoincrement())
+  canteen                 Canteen       @relation(fields: [canteen_id], references: [canteen_id])
+  canteen_id              Int
+  user                    User          @relation(fields: [user_id], references: [user_id])
+  user_id                 Int
+  payment_method          Payment
+  payment_method_provider String
+  amount_total            Float
+  fee                     Float
+  status                  OrderStatus
+  process_status          OrderStatus
+  payment_status          PaymentStatus
+  created_at              DateTime      @default(now())
+  order_details           OrderDetail[]
+}
+
+// Order Detail table
+model OrderDetail {
+  order_detail_id Int   @id @default(autoincrement())
+  order           Order @relation(fields: [order_id], references: [order_id])
+  order_id        Int
+  menu            Menu  @relation(fields: [menu_id], references: [menu_id])
+  menu_id         Int
+  sub_total       Float
+  quantity        Int
+}
+
+// Menu table
+model Menu {
+  menu_id       Int           @id @default(autoincrement())
+  canteen       Canteen       @relation(fields: [canteen_id], references: [canteen_id])
+  canteen_id    Int
+  name          String
+  slug          String
+  price         Float
+  stock_amount  Int
+  image_url     String
+  order_details OrderDetail[]
+  CartItem      CartItem[]
+}
+
+// Cart table
+model Cart {
+  cart_id    Int        @id @default(autoincrement())
+  user       User       @relation(fields: [user_id], references: [user_id])
+  user_id    Int
+  total      Float
+  created_at DateTime   @default(now())
+  cart_items CartItem[]
+}
+
+// Cart Item table
+model CartItem {
+  cart_item_id   Int   @id @default(autoincrement())
+  cart           Cart  @relation(fields: [cart_id], references: [cart_id])
+  cart_id        Int
+  menu           Menu  @relation(fields: [menu_id], references: [menu_id])
+  menu_id        Int
+  subtotal       Float
+  quantity       Int
+  price_per_item Float
+}
+
+// Notifications table
+model Notifications {
+  notification_id      Int                  @id @default(autoincrement())
+  user                 User                 @relation(fields: [user_id], references: [user_id])
+  user_id              Int
+  status               String
+  created_at           DateTime             @default(now())
+  notification_details NotificationDetail[]
+}
+
+// Notification Detail table
+model NotificationDetail {
+  notification_detail_id Int           @id @default(autoincrement())
+  notifications          Notifications @relation(fields: [notification_id], references: [notification_id])
+  notification_id        Int
+  message                String
+  headline               String
+  created_at             DateTime      @default(now())
+}
